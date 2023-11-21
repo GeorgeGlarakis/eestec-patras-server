@@ -16,4 +16,3 @@ Recurring Issues:
   - ```
     $ docker exec -it certbot certbot --force-renew renew
     $ docker restart nginx
-```
