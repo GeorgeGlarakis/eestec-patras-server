@@ -13,6 +13,5 @@ or use tags to run specific roles: `ansible-playbook -i inventory -e @secrets.en
 Recurring Issues:
 - TLS Certificate renewal. 
   - Connect to the server with SSH and run:
-  - ```
-    $ docker exec -it certbot certbot --force-renew renew
-    $ docker restart nginx
+  `$` ```docker exec -it certbot certbot --force-renew renew```
+  `$` ```docker restart nginx```
