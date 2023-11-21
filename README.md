@@ -7,3 +7,11 @@ or use tags to run specific roles: `ansible-playbook -i inventory -e @secrets.en
 - To decrypt secrets.enc run: `ansible-vault decrypt secrets.enc`
 - To encrypt it again before commiting run: `ansible-vault encrypt secrets.enc`<br>
 *Source: https://docs.ansible.com/ansible/latest/vault_guide/vault_encrypting_content.html*
+
+Recurring Issues:
+- TLS Certificate renewal. 
+  - Connect to the server with SSH and run:
+  - ```
+    $ docker exec -it certbot certbot --force-renew renew
+    $ docker restart nginx
+```
