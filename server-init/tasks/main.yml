@@ -1,0 +1,47 @@
+---
+- name: Update and upgrade apt packages
+  apt:
+    upgrade: yes
+    update_cache: true
+
+- name: Setup system files
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}/{{ item.dest_name | default(item.src) }}"
+    mode: u=rw,g=r,o=r
+  with_items:
+    - { src: sudoers, dest: /etc }
+
+- name: Harden server
+  include_tasks: harden.yml
+
+- name: Install Docker
+  apt:
+    name:
+      - docker.io
+    update_cache: true
+
+- name: Add user permissions
+  shell: "usermod -aG docker {{ SUDO_USER }}"
+
+- name: Reset ssh connection for changes to take effect
+  meta: "reset_connection"
+
+- name: Install Python Package Manager
+  apt:
+    name: 
+      - python3-pip
+      - libffi-dev
+      
+- name: Install Python Docker SDK
+  become_user: "{{ SUDO_USER }}"
+  pip:
+    name:
+      - docker
+      - docker-compose
+
+- name: Create docker network
+  community.docker.docker_network:
+    name: eestec
+    driver: bridge
+    state: present

@@ -1,0 +1,89 @@
+---
+- name: Make sure all necessary paths exist
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: u=rwx,g=rx,o=rx
+  with_items:
+    - { path: /home/docker/certbot }
+    - { path: /docker/nginx/certbot }
+
+- name: Copy all necessary files to the host
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}/{{ item.dest_name | default(item.src) }}"
+    mode: u=rw,g=r,o=r
+  with_items:
+    - { src: Dockerfile, dest: /home/docker/certbot }
+
+# We use '{{ '{{' }}' because otherwise ansible thinks that it's a Jinja2 expression
+- name: Check if nginx is running
+  ansible.builtin.shell:
+    cmd: docker inspect --format "{{ '{{' }}.State.Running{{ '}}' }}" nginx || true
+  register: nginx_running
+  changed_when: false
+
+# We can only do that when nginx is not running because we need port 80. If
+# it is running, the certbot container should take care of the renewal with
+# the webroot method. It only handles renewals, because nginx won't start if
+# there are no certificates present, so we have to issue them here first.
+# The construction of the certbot command is a bit complicated, but it was
+# the easiest solution I found that still kept the configuration flexibility.
+- name: Create the container
+  block:
+    - name: Create the secret file
+      ansible.builtin.copy:
+        content: "dns_cloudflare_api_token = {{ cloudflare_api_token }}"
+        dest: /home/docker/certbot/cloudflare.ini
+        mode: u=rw
+    - name: Build the container
+      community.docker.docker_image:
+        name: certbot
+        build:
+          dockerfile: Dockerfile
+          path: /home/docker/certbot
+        source: build
+        force_source: true
+    - name: Delete secret file
+      ansible.builtin.file:
+        path: /home/docker/certbot/cloudflare.ini
+        state: absent
+
+- name: Create initial certificates
+  community.docker.docker_container:
+    name: certbot
+    image: certbot
+    state: started
+    detach: false
+    command: "{{ certbot_base_command + ['-d'] + certbot_domains_list.split(' ') }}"
+    volumes:
+      - /docker/ssl:/etc/letsencrypt
+  vars:
+    certbot_base_command:
+      [
+        "certbot",
+        "certonly",
+        "--dns-cloudflare",
+        "--dns-cloudflare-credentials",
+        "/secrets/certbot/cloudflare.ini",
+        "--dns-cloudflare-propagation-seconds",
+        "20",
+        "-n",
+        "--agree-tos",
+        "--email",
+        "certificates@{{ domain }}",
+        "--cert-name",
+        "{{ domain }}",
+      ]
+    certbot_domains_list: "{{ certificate_domains | join(' -d ') }}"
+
+- name: Start the container
+  community.docker.docker_container:
+    name: certbot
+    image: certbot
+    state: started
+    restart: true
+    restart_policy: unless-stopped
+    volumes:
+      - /docker/ssl:/etc/letsencrypt
+      - /docker/nginx/certbot:/docker

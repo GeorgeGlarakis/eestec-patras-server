@@ -1,0 +1,31 @@
+---
+- name: Create necesary directories
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: u=rwx,g=rx,o=rx
+  with_items:
+    - { path: /home/docker/mysql }
+    - { path: /home/docker/mysql/data }
+
+- name: Copy all necessary files to the host
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}/{{ item.dest_name | default(item.src) }}"
+    mode: u=rw,g=rw,o=rw
+  with_items:
+    - { src: init.sql, dest: /home/docker/mysql }
+
+- name: Install mysql
+  community.docker.docker_container:
+    name: mysql
+    image: mysql:8.0.33
+    networks:
+      - name: eestec
+        aliases: mysql.docker
+    env:
+      MYSQL_ROOT_PASSWORD: "{{ mysql_root_password | string }}"
+    volumes:
+      - /home/docker/mysql/data:/var/lib/mysql/
+      - /home/docker/mysql/init.sql:/docker-entrypoint-initdb.d/00-init.sql
+    restart_policy: unless-stopped

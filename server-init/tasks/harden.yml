@@ -1,0 +1,84 @@
+---
+# SSH configuration based on here
+# https://www.ssh.com/academy/ssh/sshd_config
+- name: Configure SSH server
+  block:
+    # - name: Disable password login
+    #   ansible.builtin.lineinfile:
+    #     path: /etc/ssh/sshd_config
+    #     regexp: "^PasswordAuthentication"
+    #     line: "PasswordAuthentication no"
+    #     state: present
+    - name: Allow public key authentication
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^PubkeyAuthentication"
+        line: "PubkeyAuthentication yes"
+        state: present
+    # - name: Allow root access only with key
+    #   ansible.builtin.lineinfile:
+    #     path: /etc/ssh/sshd_config
+    #     regexp: "^PermitRootLogin"
+    #     line: "PermitRootLogin prohibit-password"
+    #     state: present
+    # - name: Allow only secure symmetric ciphers
+    #   ansible.builtin.lineinfile:
+    #     path: /etc/ssh/sshd_config
+    #     regexp: "^Ciphers"
+    #     line: "Ciphers aes128-ctr,aes192-ctr,aes256-ctr"
+    #     state: present
+    # - name: Allow only secure host key algorithms
+    #   ansible.builtin.lineinfile:
+    #     path: /etc/ssh/sshd_config
+    #     regexp: "^HostKeyAlgorithms"
+    #     line: "HostKeyAlgorithms ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-rsa,ssh-dss"
+    #     state: present
+    # - name: Allow only secure key exchange algorithms
+    #   ansible.builtin.lineinfile:
+    #     path: /etc/ssh/sshd_config
+    #     regexp: "^KexAlgorithms"
+    #     line: "KexAlgorithms ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256"
+    #     state: present
+    # - name: Allow only Message Authentication Code (MAC) algorithms
+    #   ansible.builtin.lineinfile:
+    #     path: /etc/ssh/sshd_config
+    #     regexp: "^MACs"
+    #     line: "MACs hmac-sha2-256,hmac-sha2-512"
+    #     state: present
+    - name: Restart sshd
+      ansible.builtin.service:
+        name: sshd
+        state: restarted
+
+- name: Install and configure a firewall
+  block:
+    - name: Install uncomplicated firewall (ufw)
+      ansible.builtin.apt:
+        name:
+          - ufw
+        state: present
+        update_cache: true
+    - name: Set logging
+      community.general.ufw:
+        logging: "on"
+    - name: Enable OpenSSH
+      community.general.ufw:
+        rule: allow
+        name: OpenSSH
+    - name: Enable HTTP
+      community.general.ufw:
+        rule: allow
+        port: "80"
+    - name: Enable HTTPS
+      community.general.ufw:
+        rule: allow
+        port: "443"
+    - name: Reload ufw
+      community.general.ufw:
+        state: reloaded
+        policy: allow
+    - name: Enable ufw
+      community.general.ufw:
+        state: enabled
+        policy: allow
+

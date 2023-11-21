@@ -1,0 +1,16 @@
+---
+- name: 
+  hosts: eestec-patras
+  remote_user: '{{ SUDO_USER }}'
+  become: yes
+
+  roles:
+    - server-init
+    - role: certbot
+      tags: certbot
+    - role: mysql
+      tags: mysql
+    - role: eestec-site
+      tags: site
+    - role: nginx
+      tags: nginx

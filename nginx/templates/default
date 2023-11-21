@@ -1,0 +1,25 @@
+# HTTP
+server {
+    # Give the user an error if they use an invalid subdomain
+    listen 80 default_server;
+    server_name  _;
+
+    # Close the connection without a response
+    return 444;
+}
+
+# HTTPS
+server {
+    # Give the user an error if they use an invalid subdomain
+    listen 443 ssl default_server;
+    server_name  _;
+
+    # Despite dropping the connection right away, we need to have a
+    # certificate first to decrypt the host header field to match it with
+    # the server_name.
+    ssl_certificate /etc/ssl/live/{{ domain }}/fullchain.pem;
+    ssl_certificate_key /etc/ssl/live/{{ domain }}/privkey.pem;
+
+    # Close the connection without a response
+    return 444;
+}

@@ -1,0 +1,77 @@
+---
+- name: Make sure all necessary paths exist
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: u=rwx,g=rx,o=rx
+  with_items:
+    - { path: /home/docker/eestec-site/assets }
+    - { path: /home/docker/nginx/assets/sites-enabled }
+
+- name: Make sure all necessary paths exist
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: u=rwx,g=rx,o=rx
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+  with_items:
+    - { path: /docker/nginx/eestec-site, owner: www-data, group: www-data }
+
+- name: Check if initial setup was already ran
+  ansible.builtin.stat:
+    path: "/docker/nginx/eestec-site/installer.php"
+  register: script_exists
+
+# - name: Make sure the website code is up to date
+#   when: not script_exists.stat.exists
+#   become: true
+#   become_user: www-data
+#   ansible.builtin.git:
+#     repo: https://gitlab.com/eestec/eestech-challenge-wordpress.git
+#     dest: /docker/nginx/eestec-site
+#     version: main
+
+- name: Copy all necessary files to the host
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}/{{ item.dest_name | default(item.src) }}"
+    mode: u=rw,g=rw,o=rw
+  with_items:
+    - { src: Dockerfile, dest: /home/docker/eestec-site }
+    - {
+      src: wp-config.php,
+      dest: /docker/nginx/eestec-site,
+      owner: www-data,
+      group: www-data,
+    }
+    - {
+      src: nginx.conf,
+      dest: /home/docker/nginx/assets/sites-enabled,
+      dest_name: "{{ domain }}",
+    }
+
+- name: Build and start the container
+  block:
+    - name: Build the container
+      community.docker.docker_image:
+        name: eestec-site
+        build:
+          dockerfile: Dockerfile
+          path: /home/docker/eestec-site
+        source: build
+        force_source: true
+    - name: Start the container
+      community.docker.docker_container:
+        name: eestec-site
+        image: eestec-site
+        hostname: eestec-site.docker
+        state: started
+        restart: true
+        restart_policy: unless-stopped
+        networks:
+          - name: eestec
+            aliases:
+              - eestec-site.docker
+        volumes:
+          - /docker/nginx/eestec-site:/docker/eestec-site

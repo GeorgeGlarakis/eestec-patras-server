@@ -1,0 +1,53 @@
+---
+- name: Make sure all necessary paths exist
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: u=rwx,g=rx,o=rx
+  with_items:
+    - { path: /home/docker/nginx/assets/locations }
+    - { path: /home/docker/nginx/assets/sites-enabled }
+    - { path: /docker/nginx }
+
+- name: Copy all necessary files to the host
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}/{{ item.dest_name | default(item.src) }}"
+    mode: u=rw,g=r,o=r
+  with_items:
+    - { src: Dockerfile, dest: /home/docker/nginx }
+    - { src: nginx.conf, dest: /home/docker/nginx/assets }
+    - { src: default, dest: /home/docker/nginx/assets/sites-enabled }
+
+- name: Build and start the container
+  block:
+    - name: Build the container
+      community.docker.docker_image:
+        name: nginx
+        build:
+          dockerfile: Dockerfile
+          path: /home/docker/nginx
+        source: build
+        force_source: true
+
+    - name: Start the container
+      community.docker.docker_container:
+        name: nginx
+        image: nginx
+        hostname: nginx.docker
+        state: started
+        restart: true
+        restart_policy: unless-stopped
+        networks:
+          - name: eestec
+            aliases:
+              - nginx.docker
+        ports:
+          - "80:80"
+          - "443:443"
+        volumes:
+          - /docker/ssl:/etc/ssl
+          - /docker/nginx:/docker
+          - /home/docker/nginx/assets/nginx.conf:/etc/nginx/nginx.conf
+          - /home/docker/nginx/assets/sites-enabled:/etc/nginx/sites-enabled
+          - /home/docker/nginx/assets/locations:/etc/nginx/locations
