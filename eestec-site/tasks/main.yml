@@ -50,6 +50,22 @@
       dest: /home/docker/nginx/assets/sites-enabled,
       dest_name: "{{ domain }}",
     }
+    - {
+      src: eestec.ece.upatras.gr-nginx.conf,
+      dest: /home/docker/nginx/assets/sites-enabled,
+      dest_name: "eestec.ece.upatras.gr",
+    }
+
+- name: Copy all necessary files to the host
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}/{{ item.dest_name | default(item.src) }}"
+    mode: u=rwx,g=rwx,o=rwx
+  with_items:
+  - {
+      src: ece.upatras.gr-crontab,
+      dest: /etc/cron.daily
+    }
 
 - name: Build and start the container
   block:
