@@ -13,4 +13,4 @@
     - role: eestec-site
       tags: site
     - role: nginx
-      tags: nginx
+      tags: nginx, site

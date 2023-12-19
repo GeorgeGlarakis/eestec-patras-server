@@ -7,6 +7,8 @@
   with_items:
     - { path: /home/docker/certbot }
     - { path: /docker/nginx/certbot }
+    - { path: /docker/ssl/ }
+
 
 - name: Copy all necessary files to the host
   ansible.builtin.template:
